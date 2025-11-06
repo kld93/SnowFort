@@ -1,0 +1,36 @@
+---
+title: "Sample Size determination"
+author: "Katie L. Duggan DiDominic"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Load packages
+```{r}
+#install.packages("pwr")
+library(pwr)
+```
+
+## Define parameters
+```{r}
+# Factors
+## Moisture levels = low, medium, high = 3
+## Time points = 0, 24, 48 hours = 3
+## Strength test = vertical, horizontal = 2
+
+num_groups <- 3*3*2 #number of groups in ANOVA
+effect_size <- 0.40 #Cohen's f (medium effect size for ANOVA)
+alpha <- 0.05 #significance level
+power <- 0.8 #desired power (standard; higher would be 90%)
+```
+
+## Sample size calculation
+```{r}
+result <- pwr.anova.test(f = effect_size, sig.level = alpha, power = power, k = num_groups)
+result
+
+## ~8 samples per group with large effect, ~20 for medium effect
+```
+

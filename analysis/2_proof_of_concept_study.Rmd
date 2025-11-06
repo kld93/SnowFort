@@ -1,0 +1,113 @@
+---
+title: "Proof of Concept Study"
+author: "Katie L. Duggan DiDominic"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Load packages
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+```
+
+## Load data
+```{r}
+blockheight_in <- c(2.625, 3, 3, 3, 3.0625, 3.125, 3.25, 3.375)
+blockweight_lb <- c(6, 7, 7, 7, 8, 7.5, 7.5, 8)
+
+block_data <- tibble(blockheight_in, blockweight_lb)
+```
+
+## Analyze
+```{r}
+poc <- block_data %>% 
+  mutate(volume_cm3 = 30.48*15.24*2.54*blockheight_in) %>% 
+  mutate(mass_g = blockweight_lb*453.592) %>% 
+  mutate(blockheight_cm = blockheight_in * 2.54) %>%
+  mutate(density_gcm3 = mass_g/volume_cm3) %>% 
+  mutate(sample_id = c('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H')) %>% 
+  select(c(sample_id, blockheight_in, blockheight_cm, blockweight_lb, volume_cm3, mass_g, density_gcm3))
+
+poc %>% 
+  ggplot(mapping = aes(sample_id, density_gcm3, fill = mass_g)) +
+  geom_bar(stat = "identity")
+
+model_height <- lm(blockheight_cm ~ density_gcm3, data = poc)
+r2_height <- summary(model_height)$r.squared
+
+model_mass <- lm(mass_g ~ density_gcm3, data = poc)
+r2_mass <- summary(model_mass)$r.squared
+
+model_masstoheight <- lm(mass_g ~ blockheight_cm, data = poc)
+r2_masstoheight <- summary(model_masstoheight)$r.squared
+
+# density and block mass (R2 = 0.42)
+poc %>% 
+  ggplot(mapping = aes(mass_g, density_gcm3)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  annotate("text", x = 3000, y = 1, label = paste("R² =", round(r2_mass, 2)), size = 5, hjust = 1)
+
+# as block height increases, mass increases (R2 = 0.78)
+poc %>% 
+  ggplot(aes(x = blockheight_cm, y = mass_g)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  annotate("text", x = 7, y = 1, label = paste("R² =", round(r2_masstoheight, 2)), size = 5, hjust = 1)
+
+# plot for LR
+library(RColorBrewer)
+reds <- brewer.pal(9, "Reds")[3:9]
+
+poc %>% 
+  ggplot(mapping = aes(blockheight_cm, density_gcm3, color = mass_g)) +
+  geom_point(position = "jitter", size = 3) +
+  scale_color_gradientn(colors = reds) +
+  geom_hline(yintercept = 0.05, linetype = "dashed", color = "steelblue1", linewidth = 1) +
+  annotate("text", x = 7.15, y = 0.05, label = "FRESHLY FALLEN SNOW", vjust = -1, color = "steelblue1", fontface = "bold") +
+  geom_hline(yintercept = 0.3, linetype = "dashed", color = "steelblue1", linewidth = 1) +
+  annotate("text", x = 7.15, y = 0.3, label = "SETTLED SNOW", vjust = -1, color = "steelblue1", fontface = "bold") +
+  geom_hline(yintercept = 0.4, linetype = "dashed", color = "steelblue3", linewidth = 1) +
+  annotate("text", x = 7.15, y = 0.4, label = "FIRN", vjust = -1, color = "steelblue3", fontface = "bold") +
+  geom_hline(yintercept = 0.83, linetype = "dashed", color = "steelblue4", linewidth = 1) +
+  annotate("text", x = 7.15, y = 0.83, label = "ICE (w/ bubbles)", vjust = -1, color = "steelblue4", fontface = "bold") +
+  geom_hline(yintercept = 0.917, linetype = "dashed", color = "steelblue4", linewidth = 1) +
+  annotate("text", x = 7.15, y = 0.917, label = "PURE GLACIER ICE (no bubbles)", vjust = -1, color = "steelblue4", fontface = "bold") +
+  scale_y_continuous(trans = "reverse", name = "CSB Density (g/cm3)", limits = c(1.025, 0)) +
+  xlab("CSB Height (cm)") +
+  labs(color = "CSB Mass (g)") +
+  theme_bw() +
+  theme(legend.position = c(0.90, 0.42),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        plot.margin = margin(20, 20, 10, 10))
+
+# avg and stdev for block height
+mean(poc$blockheight_cm)
+sd(poc$blockheight_cm)
+
+# avg and stdev for block mass
+mean(poc$mass_g)
+sd(poc$mass_g)
+
+# avg and stdev for density
+mean(poc$density_gcm3)
+sd(poc$density_gcm3)
+```
+
+### uniformity?
+```{r}
+x <- poc$density_gcm3
+
+qqnorm(x)
+qqline(x)
+shapiro.test(x) #null hypothesis assumes normality, a low p-value indicates deviation from that assumption
+#0.0048
+```
+
+
